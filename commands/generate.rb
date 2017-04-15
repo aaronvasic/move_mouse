@@ -1,7 +1,7 @@
 module XScreenTool
     module CommandLine
         module Command
-            Install = {
+            Generate = {
                 commands: [ "\n(no args)\n\nInstalls commands based on configuration to ~/.local/bin",
                     ->(*args){
                         fname=INSTALLPATH
@@ -12,9 +12,9 @@ module XScreenTool
 
                                 io.puts '( "screen" )'
                                     io.puts "case $2 in"
-                                        Displays.each.with_index{|display,idx|
-                                            io.puts "('#{idx}') #{Mouse.xdotool(display.center)} ;;"
-                                            io.puts "('#{display.identifier}') #{Mouse.xdotool(display.center)} ;;"
+                                        XScreenTool::Displays.each.with_index{|display,idx|
+                                            io.puts "('#{idx}') #{XScreenTool::Mouse.xdotool(display.center)} ;;"
+                                            io.puts "('#{display.identifier}') #{XScreenTool::Mouse.xdotool(display.center)} ;;"
                                         }
                                     io.puts "esac"
                                 io.puts ";;"
@@ -22,7 +22,7 @@ module XScreenTool
                                 io.puts '( "mouse" )'
                                     io.puts "case $2 in"
                                         io.puts ' ("centertowindow") '
-                                            io.puts Mouse.xdotool_centerToWindow
+                                            io.puts XScreenTool::Mouse.xdotool_centerToWindow
                                         io.puts ";;"
                                     io.puts "esac"
                                 io.puts ";;"
@@ -33,9 +33,9 @@ module XScreenTool
                                             io.puts "case $3 in"
                                                 io.puts ' ("screen") '
                                                         io.puts "case $4 in"
-                                                            Displays.each.with_index{|display,idx|
+                                                            XScreenTool::Displays.each.with_index{|display,idx|
                                                                 io.puts "('#{display.identifier}')"
-                                                                    io.puts Window.xdotool_moveToScreen(display.identifier)
+                                                                    io.puts XScreenTool::Window.xdotool_moveToScreen(display.identifier)
                                                                 io.puts ";;"
                                                             }
                                                         io.puts "esac"

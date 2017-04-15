@@ -17,7 +17,7 @@ end
 
 PROGNAME = File.basename($0).sub(/#{::File.extname($0)}$/,'')
 PROGDIR = File.dirname(File.absolute_path($0))
-INSTALLPATH = "#{ENV["HOME"]}/.local/bin/#{PROGNAME}"
+INSTALLPATH = "#{PROGDIR}/bin/#{PROGNAME}"
 
 
 module ::XScreenTool
