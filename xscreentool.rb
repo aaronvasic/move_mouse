@@ -16,6 +16,7 @@ else
 end
 
 PROGNAME = File.basename($0).sub(/#{::File.extname($0)}$/,'')
+PROGDIR = File.dirname(File.absolute_path($0))
 INSTALLPATH = "#{ENV["HOME"]}/.local/bin/#{PROGNAME}"
 
 
@@ -304,100 +305,6 @@ EOF
         end
     end
 
-    CommandTree={
-        screen: [ "screen_id\n(where screen_id is the screen's index number)",
-                ->(*args){
-                    raise ::XScreenTool::InvalidArgumentException(*args) unless args.first.match(/^\d+$/)
-                    Mouse.move_to_screen(args.first)
-                } ],
-        install: {
-            commands: [ "\n(no args)\n\nInstalls commands based on configuration to ~/.local/bin",
-                ->(*args){
-                    fname=INSTALLPATH
-                    File.open(fname,"w+") do |io|
-                        io.puts "#!/bin/bash"
-
-                        io.puts "case $1 in"
-
-                            io.puts '( "screen" )'
-                                io.puts "case $2 in"
-                                    Displays.each.with_index{|display,idx|
-                                        io.puts "('#{idx}') #{Mouse.xdotool(display.center)} ;;"
-                                        io.puts "('#{display.identifier}') #{Mouse.xdotool(display.center)} ;;"
-                                    }
-                                io.puts "esac"
-                            io.puts ";;"
-
-                            io.puts '( "mouse" )'
-                                io.puts "case $2 in"
-                                    io.puts ' ("centertowindow") '
-                                        io.puts Mouse.xdotool_centerToWindow
-                                    io.puts ";;"
-                                io.puts "esac"
-                            io.puts ";;"
-
-                            io.puts '( "window" )'
-                                io.puts "case $2 in"
-                                    io.puts ' ("move") '
-                                        io.puts "case $3 in"
-                                            io.puts ' ("screen") '
-                                                    io.puts "case $4 in"
-                                                        Displays.each.with_index{|display,idx|
-                                                            io.puts "('#{display.identifier}')"
-                                                                io.puts Window.xdotool_moveToScreen(display.identifier)
-                                                            io.puts ";;"
-                                                        }
-                                                    io.puts "esac"
-                                            io.puts ";;"
-                                        io.puts "esac"
-                                    io.puts ";;"
-                                io.puts "esac"
-                            io.puts ";;"
-                        io.puts "esac"
-                    end
-                    File.chmod(0700,fname)
-                } ]
-        },
-        mouse: {
-            centertowindow: [
-                "\n(no args)",
-                ->(){
-                    Mouse.CenterToWindow
-                } ]
-        },
-        window: {
-            move: {
-                screen: [
-                    "screen_index|screen_identifier",
-                    ->(*args){
-                        Window.MoveToScreen(*args)
-                    } ]
-            },
-            tile: {
-                north: [
-                    '',
-                    ->(){
-                    } ],
-                south: [ '',
-                    ->(){} ]
-            }
-        },
-        kde: {
-            config: [ "file\nwhere file is the name or path of the kconfig file to write",
-                ->(*args){
-                    raise ::XScreenTool::InvalidArgumentException if args[0].nil?
-                    KDE::Config.new(args[0]).write(Displays)
-                } ],
-            shortcuts: {
-                register: [ "\n(no args)\n(this function is broken)",
-                ->(*args){
-                    KDE::Shortcuts.register(Displays)
-                } ]
-            }
-        },
-        nil => [ '',
-                ->(*args){ 'Arguments are required.' } ]
-    }
     module KWin
         Bus = DBus::SessionBus.instance
         Service = Bus.service("org.kde.KWin")
@@ -438,7 +345,24 @@ EOF
         end
     end
     module CommandLine
-        def interpret_commandtree(proc_or_hash=CommandTree,args=$ARGV.clone)
+        COMMANDS_PATH = PROGDIR + "/commands"
+        def load_commands()
+            command_files = Dir.glob(COMMANDS_PATH + "/*.rb")
+            command_files.each{|file|
+                require_relative file.sub(/\.rb$/,'')
+            }
+        end
+        def build_tree()
+            tree={
+                nil => [ '',
+                        ->(*args){ 'Arguments are required.' } ]
+            }
+            load_commands unless CommandLine.const_defined?(:Command)
+            Command::constants.each{|k| tree[k.downcase.to_sym]=Command.const_get k}
+            return tree
+        end
+        def interpret_commandtree(proc_or_hash=nil,args=$ARGV.clone)
+            proc_or_hash=build_tree if proc_or_hash.nil?
             case proc_or_hash.class.to_s
             when 'Array'
                 if (args[0] == "--help" || args[0] == '-h')
@@ -467,7 +391,7 @@ EOF
         class Interpreter
             include CommandLine
             def initialize(*args)
-                interpret_commandtree(CommandTree,args)
+                interpret_commandtree(nil,args)
             end
         end
     end
