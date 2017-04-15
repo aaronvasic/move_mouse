@@ -1,0 +1,32 @@
+'DVI-I-1':
+    keys:
+        mouse:
+            key: "Meta+W"
+            uuid: '7fd81d43-a076-40e6-ad68-4176612516e7'
+        window:
+            key: "Meta+Shift+W"
+            uuid: '54675c44-6529-4afc-8e64-526027f918c2'
+'HDMI-0':
+    keys:
+        mouse:
+            key: "Meta+A"
+            uuid: '7760e2fd-ab04-42aa-a240-2105d9ca2c3d'
+        window:
+            key: "Meta+Shift+A"
+            uuid: '82edc039-8394-4a34-8596-e8287ecf253b'
+'DP-1':
+    keys:
+        mouse:
+            key: "Meta+D"
+            uuid: 'd13074b8-3a0d-41df-9508-a780e0eb046a'
+        window:
+            key: "Meta+Shift+D"
+            uuid: '3dcdf01a-f798-43de-b7b5-225dcdaae61f'
+'DVI-D-0':
+    keys:
+        mouse:
+            key: "Meta+S"
+            uuid: '49ca6d66-cae9-4811-aacc-a38c021bb262'
+        window:
+            key: "Meta+Shift+S"
+            uuid: 'a3a17bb1-3023-45f5-b8ed-c0cf506d98b9'
