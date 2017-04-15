@@ -2,10 +2,18 @@
 require 'yaml'
 require 'dbus'
 
+testcmdname = "xscreentool"
+testargs = %w[window split north]
+
+if $0 == '-'
+    $0 = testcmdname
+    $ARGV = testargs
+end
 
 module MoveMouse
     %w[ NoConfigFileException NoHomeException InvalidCommandTreeException InvalidScreenException InvalidArgumentException InvalidCommandException ].each do |word|
         const_set word,Class.new(Exception)
+        define_singleton_method word,->(*args){const_get(word).new(*args)}
     end
 
     # Monitors:
@@ -82,7 +90,7 @@ module MoveMouse
             config = "#{home}/.config"
         end
         ConfigFile = "#{config}/#{`basename #{$0}`.strip}"
-        raise NoConfigFileException.new(ConfigFile) unless ::File.exists?(ConfigFile)
+        raise NoConfigFileException(ConfigFile) unless ::File.exists?(ConfigFile)
         Config = ::YAML::load_file(ConfigFile)
         Attr=[:identifier,:width,:height,:x,:y,:center,:key_binding,:key_uuid]
         attr_reader(*Attr)
@@ -124,8 +132,8 @@ module MoveMouse
             ::Kernel.system xdotool(coords)
         end
         def move_to_screen(screen)
-            ::Kernel::raise(InvalidScreenException.new(screen)) if screen.nil?
-            ::Kernel::raise(InvalidScreenException.new(screen)) unless Displays.each_index.member?(screen.to_i)
+            ::Kernel::raise(InvalidScreenException(screen)) if screen.nil?
+            ::Kernel::raise(InvalidScreenException(screen)) unless Displays.each_index.member?(screen.to_i)
             self.move(Displays[screen.to_i].center)
         end
     end
@@ -133,35 +141,49 @@ module MoveMouse
     Displays = Monitors.keys.map{|id|Display.new(id)}
 
     CommandTree={
-        screen: [ "screen_id\n(where screen_id is the screen's index number)", ->(*args){
-            raise InvalidArgumentException.new(*args) unless args.first.match(/\d+/)
-            Mouse.move_to_screen(args.first)} ],
+        screen: [ "screen_id\n(where screen_id is the screen's index number)",
+                ->(*args){
+                    raise InvalidArgumentException(*args) unless args.first.match(/\d+/)
+                    Mouse.move_to_screen(args.first)
+                } ],
         install: {
-            commands: [ "\n(no args)\n\nInstalls commands based on configuration to ~/.local/bin", ->(*args){
-                fname="#{ENV["HOME"]}/.local/bin/#{`basename #{$0}`.chomp}"
-                File.open(fname,"w+") do |io|
-                    io.puts "#!/bin/bash"
-                    io.puts "case $2 in"
-                    Displays.each.with_index{|display,idx|
-                        io.puts "('#{idx}') #{Mouse.xdotool(display.center)} ;;"
-                    }
-                    io.puts "esac"
-                end
-                File.chmod(0700,fname)
-            } ]
+            commands: [ "\n(no args)\n\nInstalls commands based on configuration to ~/.local/bin",
+                ->(*args){
+                    fname="#{ENV["HOME"]}/.local/bin/#{`basename #{$0}`.chomp}"
+                    File.open(fname,"w+") do |io|
+                        io.puts "#!/bin/bash"
+                        io.puts "case $2 in"
+                        Displays.each.with_index{|display,idx|
+                            io.puts "('#{idx}') #{Mouse.xdotool(display.center)} ;;"
+                        }
+                        io.puts "esac"
+                    end
+                    File.chmod(0700,fname)
+                } ]
+        },
+        window: {
+            split: {
+                north: [ '',
+                    ->(){'asdf'} ],
+                south: [ '',
+                    ->(){} ]
+            }
         },
         kde: {
-            config: [ "file\nwhere file is the name or path of the kconfig file to write", ->(*args){
-                raise InvalidArgumentException if args[0].nil?
-                KDE::Config.new(args[0]).write(Displays)
-            } ],
+            config: [ "file\nwhere file is the name or path of the kconfig file to write",
+                ->(*args){
+                    raise InvalidArgumentException if args[0].nil?
+                    KDE::Config.new(args[0]).write(Displays)
+                } ],
             shortcuts: {
-                register: [ "\n(no args)\n(this function is broken)", ->(*args){
+                register: [ "\n(no args)\n(this function is broken)",
+                ->(*args){
                     KDE::Shortcuts.register(Displays)
                 } ]
             }
         },
-        nil => [ '', ->(*args){ 'Arguments are required.' } ]
+        nil => [ '',
+                ->(*args){ 'Arguments are required.' } ]
     }
     def self.interpret_commandtree(proc_or_hash,args=ARGV.clone)
         case proc_or_hash.class.to_s
@@ -183,10 +205,10 @@ module MoveMouse
                 proc_or_hash.keys.select{|k|k.is_a?(Symbol)}.each{|k|puts "\t#{k}"}
                 return
             end
-            raise InvalidArgumentException unless proc_or_hash.has_key?(arg)
+            raise InvalidArgumentException([proc_or_hash,args,ARGV].to_s) unless proc_or_hash.has_key?(arg)
             interpret_commandtree(proc_or_hash[arg],args)
         else
-            raise InvalidCommandTreeException
+            raise InvalidCommandTreeException(proc_or_hash)
         end
     end
     interpret_commandtree(CommandTree)
